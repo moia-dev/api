@@ -18,91 +18,120 @@ package io.moia.protos.trip.tripbooking.http.v5;
  * Top level messages
  * * * * * * * * * * * * * * * * * * * * * */
 
-// Client requests a trip inquiry for one passenger.
+/* ----------------------- /trip/inquire/ ----------------------- */
+
+// A client inquires an estimate price and duration. A passenger count of one and timeOffset of NOW is assumed.
 message InquireTrip {
-  // The place where the passenger of a trip wants to depart from. The origin is the start point the customer has defined, containing the geo coordinates, the address and optional name of the point of interest.
+  // Coordinates and street name (optional POI) of the place where the passenger starts walking towards the next virtual stop.
   NamedLocation origin = 1;
-  // The place where the passenger of a trip wants to go to. The destination is the end point the customer has defined, containing the geo coordinates, the address and optional name of point of interest.
+  // Coordinates and street name (optional POI) of the place where the passenger wants to go after being dropped off.
   NamedLocation destination = 2;
 }
 
-// Response of the trip inquiry.
+// Response to the trip inquiry.
 message InquireTripResult {
-  // The proposed preliminary offers. At least one offer is returned.
-  repeated PreliminaryOffer preliminaryOffers = 1;
+  // ID of the Service area id that contains the requested coordinates.
+  string serviceAreaId = 1;
+  // Price of the ride
+  Price price = 2;
+  // The selected stop near the Origin for the vehicle to pick up the passenger(s).
+  // The pickup stop is chosen by the system based on the origin, vehicle route, and system parameters.
+  // The passenger(s) has to walk from the origin to the pickup stop.
+  Stop pickupStop = 3;
+  // The time window in which the vehicle should arrive at the pickup stop.
+  TimeRange pickupTimeRange = 4;
+  // The selected stop near the destination for the vehicle to deliver the passenger(s).
+  // The delivery stop is chosen by the system based on the destination, vehicle route, and system parameters.
+  // The passenger(s) has to walk from the delivery stop to the destination.
+  Stop deliveryStop = 5;
+  // The time window in which the vehicle should arrive to the delivery stop.
+  TimeRange deliveryTimeRange = 6;
 }
 
-// Contains estimates for an inquired trip.
-message PreliminaryOffer {
-  // Estimated price of the ride
-  Price price = 1;
-  // The ride schedule
-  Schedule schedule = 2;
-  // Directions how to navigate to and from the stops
-  Directions directions = 3;
-}
+/* ----------------------- /trip/offer/ ----------------------- */
 
-// Customer request trip offers
+// A client requests an offer for a trip. The result of this request can be ordered / executed.
 message RequestTrip {
-  // The place where the passenger(s) of a trip want to depart from. The origin is the start point the customer has defined, containing the geo coordinates, the address and optional name of the point of interest.
+  // Coordinates and street name (optional POI) of the place where the passenger starts walking towards the next virtual stop.
   NamedLocation origin = 1;
-  // The place where the passenger(s) of a trip want to go to. The destination is the end point the customer has defined, containing the geo coordinates, the address and optional name of point of interest.
+  // Coordinates and street name (optional POI) of the place where the passenger wants to go after being dropped off.
   NamedLocation destination = 2;
-  // Number of passengers
-  Passengers passengers = 3;
+  // Number of seats in total and child seats contained in that number.
+  SeatInfo seatInfo = 3;
+  // The requested pre-booking time
+  TimeOffset timeOffset = 4;
+  // Name of the customer, shown in VGA and In-Vehicle-Display, only needed for Dispatching1 in Hannover
+  google.protobuf.StringValue customerName = 5;
 
   enum TimeOffset {
-    NOW = 0; // default for previous versions
+    NOW = 0;
     MIN_5 = 5;
     MIN_10 = 10;
     MIN_20 = 20;
   }
-  // The requested pre-booking time
-  TimeOffset timeOffset = 4;
 }
 
 // Response of the trip request.
 // This object will be send with HTTP status code 200.
 message RequestTripResult {
-  // The proposed trip offers. At least one offer is returned.
-  repeated SignedOffer offers = 1;
+  // The proposed trip offer. This can be used to order a trip.
+  // The id contained in this object will be the tripId, used for ordering, cancellation and feedback.
+  Offer offer = 1;
+  // The signature guarantees the integrity of the offer.
+  string offerSignature = 2;
 }
 
-// Customer selected an offer and sends a request to purchase this offer.
+/* ----------------------- /trip/order/ ----------------------- */
+
+// A client selected an offer and sends a request to purchase this offer.
 message OrderTrip {
-  // Contains the data of the offer as returned for the trip request.
-  SignedOffer offer = 1;
-  // The name of the customer.
-  string customerName = 2;
-  // The token generated by a PSP to identify the payment.
-  string paymentNonce = 3;
+  // Contains the data of the offer as returned from the trip request.
+  Offer offer = 1;
+  // The signature guarantees the integrity of the offer.
+  string offerSignature = 2;
+  // The optional token generated by a PSP to identify the payment.
+  google.protobuf.StringValue paymentNonce = 3;
   // Includes coupon information of used coupons.
   CouponInformation couponInformation = 4;
+
 }
 
-// Response of the order trip request. The selected offer is purchased.
+// Response of the order trip request. Includes information about the vehicle that will execute the trip and current estimates.
 message OrderTripResult {
-  // Contains additional information of the trip.
-  TripInformation tripInformation = 1;
+  // The vehicle that is currently planned to execute the trip. This might change, updates via IoT / webhooks.
+  VehicleInfo vehicleInfo = 1;
+  // The current estimates for pickup and delivery, updates arrive via IoT / webhooks.
+  Schedule schedule = 2;
 }
 
-// A cancel request coming from the mobile client.
+/* ----------------------- /trip/cancel/ ----------------------- */
+
+// A client requests to cancel a trip.
 message CancelTrip {
-  // Identifies the trip.
-  string planId = 1;
+  // Identifies the trip
+  string tripId = 1;
 }
 
 // Empty message to confirm the successful cancellation.
-message CancelTripResult {}
+message CancelTripResult {
+}
+
+/* ----------------------- /trip/last/ ----------------------- */
 
 // Successful response of a GET /trip/last endpoint.
-// Contains the last trip that has been purchased.
+// Contains the all information about last trip that has been purchased (its offer, vehicleInfo, latest schedule and its current state).
 // The trip is either active or has been completed with a delivery or cancellation.
-message TripResult {
-  // Identifies the trip.
-  string planId = 1;
-  // The service class. Currently set to arbitary value of 'economy-id'.
-  string serviceClassId = 2;
+message LastTripResult {
+  // The original offer (this includes the tripId).
+  Offer offer = 1;
+  // The chosen vehicle.
+  VehicleInfo vehicleInfo = 2;
+  // Trip latest pickup and delivery estimates if trip is not yet completed.
+  Schedule latestSchedule = 3;
+  // The current state of the trip. Enum contains only trip states between waiting-for-vehicle and completed, i.e. no offer or order rejections.
+  TripState state = 4;
+  // Feedback information needed when possibly displaying the last trip on the client side.
+  FeedbackInformation feedbackInformation = 5;
 
   enum TripState {
     NONE = 0;
@@ -119,53 +148,39 @@ message TripResult {
     // Trip has been canceled due to a VEHICLE_SERVICE_ABORTION event.
     CANCELED_VEHICLE_SERVICE_ABORTION = 6;
   }
-  // The current state of the trip. Enum contains only trip states between waiting-for-vehicle and completed, i.e. no offer or order rejections.
-  TripState state = 3;
-
-  // Price of the ride. Consideres coupon reduction.
-  Price price = 4;
-  // The ride schedule.
-  Schedule schedule = 5;
-  // Directions how to navigate to and from the stops.
-  Directions directions = 6;
-  // Vehicle information.
-  VehicleInfo vehicleInfo = 7;
-  // A series of waypoints containing the currently planned route for the vehicle.
-  // The first waypoint represents the route from the current vehicle location to the next stop.
-  repeated Waypoint vehicleRoute = 8;
-  // Feedback information needed when possibly displaying the last trip on the client side.
-  FeedbackInformation feedbackInformation = 9;
 }
 
+/* ----------------------- /trip/feedback/ ----------------------- */
 
-// Customer creates a feedback for a trip.
+// A client creates feedback for a trip.
 message CreateFeedback {
   // Identifies the trip to give feedback for.
-  string planId = 1;
-  // Weather the feedback is positive or not (thumb up/down).
+  string tripId = 1;
+  // Whether the feedback is positive or negative (thumb up/down).
   bool positive = 2;
   // The categories the customer wants to give feedback for.
   repeated string categoryIds = 3;
-  // The actual feedback message.
+  // The actual feedback message (optional).
   google.protobuf.StringValue message = 4;
 }
 
-// The successful result of CreateFeedback, containing the feedback id.
+// The successful result of CreateFeedback.
 message CreateFeedbackResult {
-  // Unique identifier of the feedback.
-  string feedbackId = 1;
 }
 
-// Updates a feedback by its feedbackId, must at least contain one categoryId and the message.
+// Updates a feedback for a trip (identified by the tripId), must at least contain one categoryId and the message.
 message UpdateFeedback {
+  // Identifies the trip to give feedback for.
+  string tripId = 1;
   // The categories the customer wants to give feedback for.
-  repeated string categoryIds = 1;
+  repeated string categoryIds = 2;
   // The actual feedback message.
-  google.protobuf.StringValue message = 2;
+  google.protobuf.StringValue message = 3;
 }
 
 // Empty Message as result of a successful UpdateFeedback.
-message UpdateFeedbackResult {}
+message UpdateFeedbackResult {
+}
 
 // Request the list of feedback categories.
 message RequestFeedbackCategoriesResult {
@@ -177,37 +192,48 @@ message RequestFeedbackCategoriesResult {
  * Entities used inside of the wrapper objects
  * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// This Object will be send with HTTP status code 400.
+// This object will be send with HTTP status code 400.
 message TripError {
+  // Error code. The object contains all possible error from trip-booking that can occur for all domain events.
+  Code code = 1;
+  // Error message. A human readable message that can hold more details and can be used for debugging.
+  string message = 2;
+
   enum Code {
     NONE = 0;
     UNKNOWN = 1;
 
     // General Errors
-    // An error occurred during the dispatching process
+    // An error occurred during the dispatching process.
     DISPATCHING_GENERAL_ERROR = 2;
-    // An error occurred during payment process
+    // An error occurred during payment process.
     PAYMENT_GENERAL_ERROR = 3;
-    // An error occured during couponing process
+    // An error occurred during couponing process.
     COUPON_GENERAL_ERROR = 30;
-    // An internal error occured during trip process
+    // An internal error occurred during trip process.
     TRIP_GENERAL_ERROR = 32;
 
     // RequestTrip Errors
-    // An error occured during price calculation
+    // An error occurred during price calculation.
     PRICE_CALCULATION_FAILED = 4;
-    // The requested ride time is not within the service hours
+    // The requested ride time is not within the service hours.
     NOT_WITHIN_SERVICE_HOURS = 5;
-    // No vehicle found
+    // No vehicle found.
     NO_VEHICLE_ELIGIBLE = 6;
-    // No pickup stop found near the requested location
+    // No pickup stop found near the requested location.
     NO_PICKUP_STOPS_NEAR = 7;
-    // No delivery stop found near the requested location
+    // No delivery stop found near the requested location.
     NO_DELIVERY_STOPS_NEAR = 8;
     // No pickup stop and no delivery stop found nea requested locations
     NO_PICKUP_AND_DELIVERY_STOPS_NEAR = 9;
     // A trip is already active for the given customer
     TRIP_ACTIVE = 31;
+    // The service area is not known or not allowed for this user.
+    UNKNOWN_SERVICE_AREA = 33;
+    // There is no direct route between pickup stop and delivery stop.
+    // This combines the Dispatching2 errors NO_DIRECT_ROUTE, NO_LOGICAL_ROUTE_POSSIBLE, NO_GEO_ROUTE_POSSIBLE and
+    // UPDATE_VEHICLE_ROUTE_NOT_POSSIBLE
+    NO_ROUTE_POSSIBLE = 34;
 
     // OrderTrip Errors
     // The selected offer has expired
@@ -216,6 +242,10 @@ message TripError {
     NO_VEHICLE_ACK = 11;
     // The selected vehicle has been rejected
     VEHICLE_REJECTED = 12;
+    // No vehicles available in the service area.
+    NO_VEHICLES_PROVISIONED = 35;
+    // No vehicles active in the service area.
+    NO_VEHICLES_ACTIVE = 36;
     // The payment amount is not in the acceptable range
     PAYMENT_INVALID_AMOUNT = 13;
     // The provided PSP nonce is not valid
@@ -252,146 +282,104 @@ message TripError {
     // Feedback has already been created.
     FEEDBACK_ALREADY_GIVEN = 29;
   }
-
-  // Error code. The object contains all possible error from trip-booking that can occur for all domain events.
-  Code code = 1;
-  // Error message. A human readable message that can hold more details and can be used for debugging.
-  string message = 2;
 }
 
-// Combines an offer specification with a signature to validate it.
-message SignedOffer {
-  // Contains the offer specification.
-  Offer offer = 1;
-  // Contains the crypto hash to verify the offer.
-  bytes signature = 2;
+// Complete information needed to order and execute an offer.
+message Offer {
+  // The id of this specification, which will identify the created trip. This will become the tripId.
+  string id = 1;
+  // Service area id where the trip will be executed.
+  string serviceAreaId = 2;
+  // Number of seats in total and child seats contained in that number.
+  SeatInfo seatInfo = 3;
+  // Price of the ride.
+  Price price = 4;
+  // Coordinates and street name (optional POI) of the place where the passenger starts walking towards the next virtual stop.
+  NamedLocation origin = 5;
+  // The walk from the origin to the pickup stop, including duration and distance.
+  Walk walkToPickup = 6;
+  // The selected stop near the Origin for the vehicle to pick up the passenger(s).
+  // The pickup stop is chosen by the system based on the origin, vehicle route, and system parameters.
+  // The passenger(s) has to walk from the origin to the pickup stop.
+  Stop pickupStop = 7;
+  // The time window in which the vehicle should arrive at the pickup stop.
+  TimeRange pickupTimeRange = 8;
+  // The selected stop near the destination for the vehicle to deliver the passenger(s).
+  // The delivery stop is chosen by the system based on the destination, vehicle route, and system parameters.
+  // The passenger(s) has to walk from the delivery stop to the destination.
+  Stop deliveryStop = 9;
+  // The walk from the delivery stop to the destination
+  Walk walkToDestination = 10;
+  // The time window in which the vehicle should arrive to the delivery stop.
+  TimeRange deliveryTimeRange = 11;
+  // Coordinates and street name (optional POI) of the place where the passenger wants to go after being dropped off.
+  NamedLocation destination = 12;
+}
 
-  message Offer {
-    // Identifies the offer.
-    string planId = 1;
-    // Price of the ride.
-    Price price = 2;
-    // The service class. Currently set to arbitrary value of 'economy-id'.
-    string serviceClassId = 3;
-    // Describes the number of passengers.
-    Passengers passengers = 4;
-    // The ride schedule.
-    Schedule schedule = 5;
-    // Directions how to navigate to and from the stops.
-    Directions directions = 6;
-  }
+// The walking route, duration and distance from origin to pickup and delivery to destination.
+message Walk {
+  // Estimated duration for the walk.
+  google.protobuf.Duration duration = 1;
+  // Distance of the waling route in meters.
+  float distance = 2;
+  // Anchor points that define the walking route.
+  repeated Location walkingPath = 3;
+}
+
+// Time window in which the pickup or delivery can occur.
+message TimeRange {
+  // Start of acceptable pickup or delivery window.
+  google.protobuf.Timestamp start = 1;
+  // End of acceptable pickup or delivery window.
+  google.protobuf.Timestamp end = 2;
 }
 
 // The price of a ride.
 message Price {
-  // deleted: string taxRate = 2
-  reserved 2;
   // The total amount, e.g. 5.85
   string amount = 1;
   // The 3-digit currency code for the price, e.g. EUR
-  string currency = 3;
+  string currency = 2;
 }
-
-
-// The ride schedule
-message Schedule {
-  // Actual time duration of a specific ride.
-  google.protobuf.Duration rideDuration = 1;
-  // The moment of time when a passenger is indicated to be picked up from the pickup stop, according to a trip offer.
-  google.protobuf.Timestamp pickupTime = 2;
-  // The moment of time when a passenger is approximately delivered to the delivery stop, according to the trip offer.
-  // A time window can be displayed by using `deliveryTime` to `latestDeliveryTime`.
-  google.protobuf.Timestamp deliveryTime = 3;
-  // The moment of time when a passenger is at latest delivered to the delivery stop.
-  // A time window can be displayed by using `deliveryTime` to `latestDeliveryTime`.
-  google.protobuf.Timestamp latestDeliveryTime = 4;
-}
-
 
 // A Location combined with its localized address
 message NamedLocation {
   // The location as lat and lon
   Location location = 1;
-  // Street name and number
+  // Street name and number, used for trip-history and domain events.
   string primaryAddress = 2;
-  // Secondary address line, usually containing zip code and city, might also contain the country
+  // Secondary address line, usually containing zip code and city, might also contain the country.
   google.protobuf.StringValue secondaryAddress = 3;
-  // The name of a point of interest ( e.g. Hamburg Airport)
+  // The name of a point of interest (e.g. Hamburg Airport).
   google.protobuf.StringValue primaryPoiName = 4;
-  // Additional information for a point of interest (e.g. City, Country)
+  // Additional information for a point of interest (e.g. City, Country).
   google.protobuf.StringValue secondaryPoiName = 5;
 }
 
 // A location consisting of lat and lon.
 message Location {
-  // Latitude is the angular distance of a place north or south of the earth's equator, or of the equator of a celestial object, usually expressed in degrees and minutes. Min-Value = -90, Max-Value = +90
+  // Latitude (as angular distance from the equator), Min-Value = -90, Max-Value = +90
   double lat = 1;
-  // Longitude is the angular distance of a place east or west of the earth's equator, or of the equator of a celestial object, usually expressed in degrees and minutes. Min-Value = -180, Max-Value = +180.
+  // Longitude (as angular distance from the Prime Meridian), Min-Value = -180, Max-Value = +180.
   double lon = 2;
 }
 
-// A walking path contains geographic information how to walk from or to a stop.
-message WalkingPath {
-  // The list of location samples.
-  repeated Location samples = 1;
-  // The overall length of the walking path in meters.
-  float distance = 2;
-  // The estimated duration for the walking path.
-  google.protobuf.Duration duration = 3;
-}
-
-// A waypoint represents a stop and includes the route from the previous stop to itself.
-message Waypoint {
-  // The waypoint id.
-  string id = 1;
-  // The stop that this waypoint represents.
-  Stop stop = 2;
-  // Route from previous stop to this stop.
-  repeated Location geoRouteFromPrevious = 3;
-}
-
-// Directions how to navigate to and from the stops.
-message Directions {
-  // The place where the Passenger(s) of a Trip want to depart from. The Origin is the geo coordinates of the start point the customer has defined.
-  NamedLocation origin = 1;
-  // The selected stop near the Origin for the vehicle to pick up the passenger(s).
-  // The pickup stop can be chosen by the system based on the origin, vehicle route, and system parameters.
-  // The passenger(s) has to walk from the origin to the pickup stop.
-  Stop pickupStop = 2;
-  // The selected stop near the destination for the vehicle to deliver the passenger(s).
-  // The delivery stop can be chosen by the system based on the destination, vehicle route, and system parameters.
-  // The passenger(s) has to walk from the delivery stop to the destination.
-  Stop deliveryStop = 3;
-  // The place where the Passenger(s) of a Trip want to go to. The Destination is defined by the Trip Customer e.g. by the street address or the name of the place.
-  NamedLocation destination = 4;
-  // The path from the origin location to the pickup stop location.
-  WalkingPath originWalkingPath = 5;
-  // The path from the delivery stop location to the customers destination location.
-  WalkingPath destinationWalkingPath = 6;
-}
-
-// A stop consisting of the stop id, location and the name in all supported languages.
+// Information about a virtual stop.
 message Stop {
-  // The stop id.
+  // Identifier provided by the service area management.
   string id = 1;
-  // The stop name. Key is 2-digit locale, e.g. 'de', 'en'
+  // Human readable name of the stop in different languages (abbrev. as ISO 639-1 (two-letter abbreviations)).
   map<string, string> name = 2;
-  // The stop location.
-  Location location = 3;
+  // Location of the stop accessible by a human.
+  Location displayLocation = 3;
 }
 
-// Passengers consisting of number of adults.
-message Passengers {
-  // Number of adults. Min-Value = 1, Max-Value = 5. If infants is greater than 0, the Max-Value is reduced accordingly.
-  int32 adults = 1;
-  // Number of infants. Min-Value = 0, Max-Value = 2.
-  int32 infants = 2;
-}
-
-// Contains additional information of the trip.
-message TripInformation {
-  // Vehicle information.
-  VehicleInfo vehicleInfo = 1;
+// Seat constellation.
+message SeatInfo {
+  // Total amount of seats.
+  int32 seats = 1;
+  // Thereof child transportation seats.
+  int32 childSeats = 2;
 }
 
 // Total reduction and identifiers of all used coupons.
@@ -402,7 +390,6 @@ message CouponInformation {
   repeated string couponIds = 2;
 }
 
-// Vehicle information.
 message VehicleInfo {
   // The vehicle identifier.
   string id = 1;
@@ -410,23 +397,27 @@ message VehicleInfo {
   string label = 2;
 }
 
+message Schedule {
+  // Expected time when the vehicle will be at the pickup point.
+  google.protobuf.Timestamp pickup = 1;
+  // Expected time when the vehicle will be at the delivery point.
+  google.protobuf.Timestamp delivery = 2;
+}
+
 // A feedback category entry, containing an id and a map with a language key and a text to display.
 message FeedbackCategory {
   // The category id.
   string id = 1;
-  // The category name. Key is 2-digit locale, e.g. 'de', 'en'
+  // The category name. Key is a locale, e.g. 'de', 'en'
   map<string, string> name = 2;
 }
 
 // Feedback information needed when possibly displaying the last trip on the client side.
 message FeedbackInformation {
-  // Unique identifier of the feedback.
-  string feedbackId = 1;
-  // Weather the feedback is positive or not (thumb up/down).
-  bool positive = 2;
+  // Whether the feedback is positive or negative (thumb up/down).
+  bool positive = 1;
   // The feedback categories the customer selected. Empty if no categories have been selected.
-  repeated string categoryIds = 3;
+  repeated string categoryIds = 2;
   // The optional feedback message.
-  google.protobuf.StringValue message = 4;
+  google.protobuf.StringValue message = 3;
 }
-
