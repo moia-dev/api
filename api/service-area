@@ -1,0 +1,92 @@
+/**
+ * This file contains all protobuf definitions for the parts of the REST API of SAM2
+ * that are needed in the passenger apps
+ */
+
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+package io.moia.protos.sam2.http.v1;
+
+/**
+* The ServiceAreasResult message contains all service areas.
+*/
+message ServiceAreasResult {
+    repeated ServiceArea serviceAreas = 1;
+}
+
+message ServiceArea {
+    //unique id of the service area. This follows the pattern - <country>-<city>-<sequence_numnber>
+    string id = 1;
+    //uuid of the service area. This is taken from SAM1 for backward compatibility. The field is deprecated.
+    string legacyUuid = 2;
+    Version version = 3;
+    LocationAttributes locationAttributes = 4;
+    google.protobuf.Timestamp created = 5;
+    google.protobuf.Timestamp modified = 6;
+    // start of validity 
+    google.protobuf.Timestamp validFrom = 7;
+
+    //The default language for this service area. The field contains a ISO 639-1 language code.
+    string defaultLanguage = 8;
+    //map containing translations or the service area names. The key is the ISO 639-1 language code. The map will contain at least a translation for the defaultLanguage.
+    map<string, string> displayNames = 9;
+    ServiceParameters serviceParameters = 10;
+}
+
+message Version {
+    //version of this service area (represented as UUID)
+    string versionId = 1;
+    //label describing the reason for this version
+    string versionLabel = 2;
+    //The date and time at which this service area version has been published. Not present if it was never published..
+    google.protobuf.Timestamp publishedDate = 3;
+    //the version that was the published version before this one. Not present if it was never published.
+    google.protobuf.StringValue previousPublishedVersionId = 4;
+}
+
+message LocationAttributes {
+    Area area = 1;
+    // the bounds of this service area
+    Location topLeft = 2;
+    Location bottomRight = 3;
+    //time zone id e.g. Europe/Berlin
+    string timeZone = 4;
+    //The city the service area is located in
+    string city = 5;
+    //ISO 3166-1 alpha-2 country code of the country this service area is located in
+    string country = 6;
+}
+
+message Area {
+    // points of the service area boundary. This is a GeoJson LineString
+    repeated Location locations = 1;
+}
+
+message Location {
+  double lat = 1;
+  double lon = 2;
+}
+
+message ServiceParameters {
+  int32 maxSeats = 1;
+  int32 childSeats = 2;
+  int32 wheelchairSeats = 3;
+}
+
+// This object will be send with HTTP status code 400 and is required by clients.
+message ServiceAreaError {
+
+    enum Code {
+        // Explicit fallback
+        NONE = 0;
+        // Currently there are no meaningful business errors which can happen for http get.
+    }
+
+    // Error code.
+    Code code = 1;
+    // Error message. A human readable message that can hold more details and can be used for debugging.
+    string message = 2;
+}
