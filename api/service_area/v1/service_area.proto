@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+package io.moia.protos.sam2.http.v1;
+
+option go_package = "httpv1";
+option java_multiple_files = false;
+option java_outer_classname = "ServiceAreaHttpV1";
+option java_package = "io.moia.protos.sam2.http.v1";
+
+// The ServiceAreasResult message contains all service areas.
+message ServiceAreasResult {
+    repeated ServiceArea service_areas = 1;
+}
+
+// ServiceArea.
+message ServiceArea {
+    // Unique id of the service area. This follows the pattern - <country>-<city>-<sequence_numnber>.
+    string id = 1;
+    // UUID of the service area. This is taken from SAM1 for backward compatibility. The field is deprecated.
+    string legacy_uuid = 2 [deprecated=true];
+    // UUID of the service area.
+    string uuid = 11;
+    Version version = 3;
+    LocationAttributes location_attributes = 4;
+    google.protobuf.Timestamp created = 5;
+    google.protobuf.Timestamp modified = 6;
+    // Start of validity.
+    google.protobuf.Timestamp valid_from = 7;
+
+    // The default language for this service area. The field contains a ISO 639-1 language code.
+    string default_language = 8;
+    // map containing translations or the service area names. The key is the ISO 639-1 language code. The map will contain at least a translation for the defaultLanguage.
+    map<string, string> display_names = 9;
+    ServiceParameters service_parameters = 10;
+}
+
+// Information related to the current version of a service area.
+message Version {
+    // Version of this service area (represented as UUID).
+    string version_id = 1;
+    // Label describing the reason for this version.
+    string version_label = 2;
+    // The date and time at which this service area version has been published. Not present if it was never published.
+    google.protobuf.Timestamp published_date = 3;
+    // The version that was the published version before this one. Not present if it was never published.
+    google.protobuf.StringValue previous_published_version_id = 4;
+}
+
+// Attributes related to the location of a service area.
+message LocationAttributes {
+    Area area = 1;
+    // The bounds of this service area.
+    Location top_left = 2;
+    Location bottom_right = 3;
+    // Time zone id e.g. Europe/Berlin.
+    string time_zone = 4;
+    // The city the service area is located in.
+    string city = 5;
+    // ISO 3166-1 alpha-2 country code of the country this service area is located in.
+    string country = 6;
+}
+
+// Geo area.
+message Area {
+    // Ooints of the service area boundary. This is a GeoJson LineString.
+    repeated Location locations = 1;
+}
+
+// Location.
+message Location {
+  double lat = 1;
+  double lon = 2;
+}
+
+// ServiceParameters.
+message ServiceParameters {
+  int32 max_seats = 1;
+  int32 child_seats = 2;
+  int32 wheelchair_seats = 3;
+}
+
+// This object will be send with HTTP status code 400 and is required by clients.
+message ServiceAreaError {
+
+    // Known error codes.
+    enum Code {
+        // Explicit fallback
+        NONE = 0;
+        // Currently there are no meaningful business errors which can happen for http get.
+    }
+
+    // Error code.
+    Code code = 1;
+    // Error message. A human readable message that can hold more details and can be used for debugging.
+    string message = 2;
+}
