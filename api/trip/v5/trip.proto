@@ -5,17 +5,17 @@
 // - Partner API
 
 syntax = "proto3";
-option go_package = "httpv5";
+option go_package = "tripv5";
 option java_multiple_files = false;
 option java_outer_classname = "TripV5";
-option java_package = "io.moia.protos.trip.tripbooking.http.v5";
+option java_package = "io.moia.protos.trip.v5";
 
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 
-package io.moia.protos.trip.tripbooking.http.v5;
+package io.moia.protos.trip.v5;
 
 // ----------------------- /trip/offer/ -----------------------
 

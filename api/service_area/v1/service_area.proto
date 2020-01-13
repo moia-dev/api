@@ -3,12 +3,12 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
-package io.moia.protos.sam2.http.v1;
-
-option go_package = "httpv1";
+option go_package = "serviceareav1";
 option java_multiple_files = false;
 option java_outer_classname = "ServiceAreaHttpV1";
 option java_package = "io.moia.protos.sam2.http.v1";
+
+package io.moia.protos.servicearea.v1;
 
 // The ServiceAreasResult message contains all service areas.
 message ServiceAreasResult {
