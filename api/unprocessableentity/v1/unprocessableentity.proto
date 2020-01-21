@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "unprocessableentityv1";
+option java_multiple_files = false;
+option java_outer_classname = "ServiceAreaHttpV1";
+option java_package = "io.moia.protos.sam2.http.v1";
+
+package io.moia.protos.unprocessableentity.v1;
+
+// UnprocessableEntity is a general message for unprocessible entities,
+// this type is used in conjuction with Http-Status 422.
+message UnprocessableEntity {
+  // Error includes the specific message and path that are attached to the error.
+  message Error {
+    string path = 1;
+    string message = 2;
+  }
+
+  repeated Error errors = 1;
+}

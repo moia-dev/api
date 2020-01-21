@@ -1,0 +1,58 @@
+protoc:
+  version: 3.8.0
+lint:
+  group: uber2
+  # for a list of options and descriptions, run prototool lint --list-linters
+  ignores:
+      # Verifies that the file option "php_namespace" is set.
+    - id: FILE_OPTIONS_REQUIRE_PHP_NAMESPACE
+      files:
+      - api
+      # Verifies that the file option "csharp_namespace" is set.
+    - id: FILE_OPTIONS_REQUIRE_CSHARP_NAMESPACE
+      files:
+      - api
+      # Verifies that the file option "objc_class_prefix" is set.
+    - id: FILE_OPTIONS_REQUIRE_OBJC_CLASS_PREFIX
+      files:
+      - api
+      # Verifies that the file option "java_package" is equal to PREFIX.PACKAGE, with PREFIX defaulting to "com" and configurable in your configuration file.
+    - id: FILE_OPTIONS_EQUAL_JAVA_PACKAGE_PREFIX
+      files:
+      - api
+      # Verifies that the file option "java_multiple_files" is equal to true.
+    - id: FILE_OPTIONS_EQUAL_JAVA_MULTIPLE_FILES_TRUE
+      files:
+      - api
+      # Verifies that the file option "java_outer_classname" is equal to $(upperCamelCase $(basename FILE))Proto.
+    - id: FILE_OPTIONS_EQUAL_JAVA_OUTER_CLASSNAME_PROTO_SUFFIX
+      files:
+      - api
+      # Verifies that all enum fields are prefixed with ENUM_NAME_.
+    - id: ENUM_FIELD_PREFIXES_EXCEPT_MESSAGE
+      files:
+      - api
+      # Verifies that all enum zero value names are ENUM_NAME_INVALID.
+    - id: ENUM_ZERO_VALUES_INVALID_EXCEPT_MESSAGE
+      files:
+      - api
+      # Verifies that no message or enum has a reserved field.
+    - id: FIELDS_NOT_RESERVED
+      files:
+      - api
+      # Verifies that no type name contains the word "data".
+    - id: NAMES_NO_DATA
+      files:
+      - api
+     # Verifies that all google.protobuf.Duration field names are "duration" or end in "_duration".
+    - id: WKT_DURATION_SUFFIX
+      files:
+      - api
+     # Verifies that all google.protobuf.Timestamp field names are "time" or end in "_time".
+    - id: WKT_TIMESTAMP_SUFFIX
+      files:
+      - api
+     # Verifies that no type name contains the word "uuid".
+    - id: NAMES_NO_UUID
+      files:
+      - api
